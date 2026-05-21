@@ -1,0 +1,8 @@
+{
+  "dropped": [
+    "market_value",
+    "assessed_value",
+    "log_market_value",
+    "log_assessed_value"
+  ]
+}

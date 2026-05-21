@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "C:\Users\jcanl\Documents\PropertyTax\PropertyTax\PropertyTax_ML\notebooks\propertytax.py", line 286, in main
+    dataset_path = find_dataset(dataset_cli)
+  File "C:\Users\jcanl\Documents\PropertyTax\PropertyTax\PropertyTax_ML\notebooks\propertytax.py", line 243, in find_dataset
+    raise FileNotFoundError(f"Dataset {cli_path} not found")
+FileNotFoundError: Dataset 20260520175828320_PropertyTax_model_ready.csv not found

@@ -1,0 +1,134 @@
+{
+    "n_rows": 5000,
+    "n_unique_target": 2,
+    "columns": {
+        "taxpayer_type": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "mailing_city": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "mailing_province": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "province": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "city_municipality": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "barangay": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "property_type": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "class_code": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "zoning_classification": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "land_use": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "unit_no": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "lot_area_sqm": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "market_value": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": true
+        },
+        "assessment_level": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "assessed_value": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": true
+        },
+        "tax_rate": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "tax_amount": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "assessment_year": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "years_as_owner": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "prior_assessments": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "prior_late_payments": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "prior_unpaid_payments": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "avg_previous_delay_days": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "outstanding_balance": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "payment_compliance_score": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "due_month": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "due_quarter": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        },
+        "log_market_value": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": true
+        },
+        "log_assessed_value": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": true
+        },
+        "log_outstanding_balance": {
+            "exact_equal_to_target": false,
+            "perfect_mapping": false
+        }
+    },
+    "duplicate_rows": 0,
+    "train_test_row_overlap": 0,
+    "perfect_mapping_columns": [
+        "market_value",
+        "assessed_value",
+        "log_market_value",
+        "log_assessed_value"
+    ]
+}

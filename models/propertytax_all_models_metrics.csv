@@ -1,0 +1,2 @@
+model,accuracy,precision,recall,f1Score,rocAuc,artifactPath,roc,pr,stat
+Logistic Regression,0.962,0.9536,0.9487,0.9512,0.9926,C:\Users\jcanl\Documents\PropertyTax\PropertyTax\PropertyTax_ML\models\logistic_regression_propertytax_model.pkl,C:\Users\jcanl\Documents\PropertyTax\PropertyTax\PropertyTax_ML\models\logistic_regression_roc.png,C:\Users\jcanl\Documents\PropertyTax\PropertyTax\PropertyTax_ML\models\logistic_regression_pr.png,C:\Users\jcanl\Documents\PropertyTax\PropertyTax\PropertyTax_ML\models\logistic_regression_metrics.png

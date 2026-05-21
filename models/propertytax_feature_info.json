@@ -1,0 +1,78 @@
+{
+    "target": "is_late_payment",
+    "best_model_name": "Logistic Regression",
+    "categorical_features": [
+        "taxpayer_type",
+        "mailing_city",
+        "mailing_province",
+        "province",
+        "city_municipality",
+        "barangay",
+        "property_type",
+        "class_code",
+        "zoning_classification",
+        "land_use",
+        "unit_no"
+    ],
+    "numeric_features": [
+        "lot_area_sqm",
+        "assessment_level",
+        "tax_rate",
+        "tax_amount",
+        "assessment_year",
+        "years_as_owner",
+        "prior_assessments",
+        "prior_late_payments",
+        "prior_unpaid_payments",
+        "avg_previous_delay_days",
+        "outstanding_balance",
+        "payment_compliance_score",
+        "due_month",
+        "due_quarter",
+        "log_outstanding_balance"
+    ],
+    "all_features": [
+        "taxpayer_type",
+        "mailing_city",
+        "mailing_province",
+        "province",
+        "city_municipality",
+        "barangay",
+        "property_type",
+        "class_code",
+        "zoning_classification",
+        "land_use",
+        "unit_no",
+        "lot_area_sqm",
+        "assessment_level",
+        "tax_rate",
+        "tax_amount",
+        "assessment_year",
+        "years_as_owner",
+        "prior_assessments",
+        "prior_late_payments",
+        "prior_unpaid_payments",
+        "avg_previous_delay_days",
+        "outstanding_balance",
+        "payment_compliance_score",
+        "due_month",
+        "due_quarter",
+        "log_outstanding_balance"
+    ],
+    "best_params": {
+        "model__C": 0.1,
+        "model__class_weight": null
+    },
+    "best_model_metrics": {
+        "accuracy": 0.962,
+        "precision": 0.9536,
+        "recall": 0.9487,
+        "f1Score": 0.9512,
+        "rocAuc": 0.9926
+    },
+    "best_model_artifacts": {
+        "roc": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260521025359144_PropertyTax_cleaned_logistic_regression_roc.png",
+        "pr": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260521025359144_PropertyTax_cleaned_logistic_regression_pr.png",
+        "stat": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260521025359144_PropertyTax_cleaned_logistic_regression_metrics.png"
+    }
+}
