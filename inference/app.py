@@ -174,50 +174,19 @@ def health():
 
 
 @app.post("/predict")
-def predict(payload: PredictRequest, threshold: float = 0.5):
-    # build dataframe
-    row = payload.features if payload.features is not None else payload.data
-    if row is None:
-        raise HTTPException(status_code=400, detail="`data` or `features` must be provided")
+def predict(payload: dict):
+    data = payload["data"]
 
-    df = pd.DataFrame([row])
-    # ensure all expected columns exist
-    for c in ALL_FEATURES:
-        if c not in df.columns:
-            df[c] = np.nan
-    # drop unexpected columns
-    df = df[ALL_FEATURES]
+    features = [
+        data["payment_compliance_score"],
+        data["assessed_value"]
+    ]
 
-    # predict probability
-    try:
-        proba = MODEL.predict_proba(df)[0, 1]
-    except Exception:
-        # fallback to decision_function if available
-        try:
-            score = MODEL.decision_function(df)[0]
-            proba = 1 / (1 + np.exp(-score))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Model doesn't support probability output: {e}")
-
-    label = int(proba >= threshold)
-    
-    # risk level mapping
-    if proba >= 0.75:
-        risk = "High"
-    elif proba >= 0.4:
-        risk = "Medium"
-    else:
-        risk = "Low"
+    model = MODEL
+    prediction = model.predict([features])
 
     return {
-        "model": MODEL_NAME,
-        "probability": float(proba),
-        "prediction": label,
-        "predictedLabel": label,  # for C# backend compatibility
-        "threshold": float(threshold),
-        "riskLevel": risk,        # for C# backend compatibility
-        "confidence": round(float(proba) * 100.0, 2),  # for C# backend compatibility
-        "topFeatures": [{"feature": name, "importance": 0.0} for name in ALL_FEATURES[:5]], # fallback
+        "prediction": int(prediction[0])
     }
 
 

@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import pandas as pd
+from pydantic import ValidationError
 
 try:
     from . import model_loader as loader
@@ -76,10 +77,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="PropertyTax ML Service", lifespan=lifespan)
 
+
+def _parse_allowed_origins() -> List[str]:
+    raw_origins = os.environ.get("CORS_ALLOWED_ORIGINS") or os.environ.get("FRONTEND_BASE_URL")
+    if raw_origins:
+        origins = [origin.strip().rstrip("/") for origin in raw_origins.split(",") if origin.strip()]
+        if origins:
+            return origins
+
+    return ["https://property-taxation.vercel.app"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_parse_allowed_origins(),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -413,36 +424,26 @@ async def predict(req: PredictRequest):
         print("Prediction dataframe columns:")
         print(X.columns.tolist())
 
-        proba = pipeline.predict_proba(X)[0]
-        yhat = pipeline.predict(X)[0]
-
-        prob_pos = float(proba[1]) if len(proba) > 1 else float(proba[0])
-        conf = prob_pos * 100.0
-
-        if prob_pos >= 0.75:
-            risk = "High"
-        elif prob_pos >= 0.4:
-            risk = "Medium"
+        if hasattr(pipeline, "predict_proba"):
+            proba_values = pipeline.predict_proba(X)[0]
+            prob_pos = float(proba_values[1]) if len(proba_values) > 1 else float(proba_values[0])
+        elif hasattr(pipeline, "decision_function"):
+            decision = pipeline.decision_function(X)[0]
+            prob_pos = float(1.0 / (1.0 + np.exp(-float(decision))))
         else:
-            risk = "Low"
+            predicted_value = int(pipeline.predict(X)[0])
+            prob_pos = float(predicted_value)
 
-        top_feats = loader.explain_prediction(model, pipeline, X, CONTAINER.feature_info)
+        yhat = int(pipeline.predict(X)[0])
 
-        resp = PredictResponse(
-            model=model_key,
-            probability=round(prob_pos, 4),
-            predictedLabel=int(yhat),
-            prediction=int(yhat),
-            threshold=0.5,
-            riskLevel=risk,
-            confidence=round(conf, 2),
-            topFeatures=top_feats,
-        )
+        print(f"[ml_service] Prediction completed for {model_key}: prediction={yhat}, probability={prob_pos:.4f}")
 
-        return resp.dict()
+        return {"prediction": yhat, "probability": round(prob_pos, 4)}
 
     except HTTPException as ex:
         raise ex
+    except ValidationError as ex:
+        raise HTTPException(status_code=422, detail=ex.errors())
     except Exception as ex:
         msg = str(ex)
         if "mismatch" in msg.lower():

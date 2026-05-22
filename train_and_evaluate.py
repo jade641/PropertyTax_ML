@@ -154,7 +154,7 @@ def main() -> None:
         logging.info("Resolved dataset path: %s", dataset_path)
 
         # ------- Run the real training -------
-        propertytax.main(dataset_cli=dataset_path)
+        propertytax.main(dataset_cli=dataset_path, train_all_models=True)
 
         # ---------------------------------------------------------------
         # Read back the saved artifacts to build the JSON C# expects.

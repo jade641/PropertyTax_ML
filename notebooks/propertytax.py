@@ -340,7 +340,7 @@ def _save_fig(fig, name: str):
     logging.info('Saved figure: %s', path)
 
 
-def main(dataset_cli: str | None = None):
+def main(dataset_cli: str | None = None, train_all_models: bool = True):
     try:
         dataset_path = find_dataset(dataset_cli)
         logging.info('Using dataset: %s', dataset_path)
@@ -746,8 +746,25 @@ def main(dataset_cli: str | None = None):
         model_path = ARTIFACTS_DIR / f"{best_model_name.lower().replace(' ', '_')}_propertytax_model.pkl"
         feature_info_path = ARTIFACTS_DIR / 'propertytax_feature_info.json'
 
+        # Update results_df with the tuned best model's metrics (GridSearchCV may improve them)
+        best_row_mask = results_df['model'] == best_model_name
+        if best_row_mask.any():
+            results_df.loc[best_row_mask, 'test_accuracy'] = eval_metrics.get('accuracy', float('nan'))
+            results_df.loc[best_row_mask, 'test_precision'] = eval_metrics.get('precision', float('nan'))
+            results_df.loc[best_row_mask, 'test_recall'] = eval_metrics.get('recall', float('nan'))
+            results_df.loc[best_row_mask, 'test_f1'] = eval_metrics.get('f1Score', float('nan'))
+            results_df.loc[best_row_mask, 'test_roc_auc'] = eval_metrics.get('rocAuc', float('nan'))
+
         results_df.to_csv(selection_results_path, index=False)
-        joblib.dump(best_model, model_path)
+
+        # Save ALL fitted model pipelines as .pkl files (not just the best)
+        # The tuned best model replaces the baseline version in fitted_models
+        fitted_models[best_model_name] = best_model
+        for mname, mpipeline in fitted_models.items():
+            slug = mname.lower().replace(' ', '_')
+            pkl_path = ARTIFACTS_DIR / f"{slug}_propertytax_model.pkl"
+            joblib.dump(mpipeline, pkl_path)
+            logging.info('Saved model pickle: %s', pkl_path)
 
         feature_info = {'target': target_column, 'best_model_name': best_model_name, 'categorical_features': categorical_features, 'numeric_features': numeric_features, 'all_features': list(X.columns), 'best_params': grid_best_params,}
         try:
@@ -774,4 +791,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train and evaluate PropertyTax models')
     parser.add_argument('--dataset', type=str, default=None, help='Path to CSV dataset to use')
     args = parser.parse_args()
-    main(args.dataset)
+    main(args.dataset, train_all_models=True)

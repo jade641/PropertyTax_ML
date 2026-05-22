@@ -11,7 +11,10 @@ from urllib.request import Request, urlopen
 
 import os
 
-BASE_URL = os.environ.get("ML_BASE_URL", "http://127.0.0.1:8012")
+BASE_URL = os.environ.get(
+    "ML_BASE_URL",
+    "https://property-taxation-ml.onrender.com"
+)
 
 
 def get_json(path: str):
@@ -40,8 +43,8 @@ def main():
 
     assert root.get("status") == "ok", root
     assert health.get("status") == "ok", health
-    assert "probability" in prediction, prediction
     assert "prediction" in prediction, prediction
+    assert isinstance(prediction.get("prediction"), int), prediction
 
     print("Smoke test passed")
     print("root:", root)
