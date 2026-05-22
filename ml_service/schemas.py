@@ -25,6 +25,12 @@ class BatchPredictRequest(BaseModel):
     instances: List[Dict[str, Any]]
 
 
+class TrainRequest(BaseModel):
+    model: Optional[str] = None
+    dataset: str
+    parameters: Optional[Dict[str, Any]] = None
+
+
 class PredictResponse(BaseModel):
     prediction: int
     probability: Optional[float] = None

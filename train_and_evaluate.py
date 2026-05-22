@@ -14,6 +14,7 @@ propertytax.main().  This script simply:
 Expected JSON on stdout (success):
     {
       "success": true,
+      "best_model_name": "Logistic Regression",
       "metrics": { "accuracy": ..., "precision": ..., "recall": ..., "f1Score": ..., "rocAuc": ... },
       "artifactPath": "C:\\...\\models\\logistic_regression_propertytax_model.pkl"
     }
@@ -199,6 +200,7 @@ def main() -> None:
 
         _emit_json({
             "success": True,
+            "best_model_name": best_model_name,
             "metrics": metrics,
             "artifactPath": artifact_path,
         })

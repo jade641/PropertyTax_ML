@@ -1,5 +1,8 @@
+import csv
 import json
 import os
+import subprocess
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -12,10 +15,10 @@ from pydantic import ValidationError
 
 try:
     from . import model_loader as loader
-    from .schemas import PredictRequest, BatchPredictRequest, PredictResponse
+    from .schemas import PredictRequest, BatchPredictRequest, PredictResponse, TrainRequest
 except ImportError:
     import model_loader as loader
-    from schemas import PredictRequest, BatchPredictRequest, PredictResponse
+    from schemas import PredictRequest, BatchPredictRequest, PredictResponse, TrainRequest
 
 
 class ModelContainer:
@@ -371,7 +374,7 @@ def root():
         "status": "ok",
         "service": "PropertyTax ML Service",
         "model": model_name,
-        "endpoints": ["/health", "/models", "/predict", "/docs", "/chart/feature-importance", "/chart/risk-distribution", "/chart/probability-histogram"],
+        "endpoints": ["/health", "/models", "/train", "/predict", "/docs", "/chart/feature-importance", "/chart/risk-distribution", "/chart/probability-histogram"],
     }
 
 
@@ -387,6 +390,101 @@ async def list_models():
             {"name": name, "artifactPath": CONTAINER.artifacts.get(name)}
             for name in CONTAINER.models.keys()
         ]
+    }
+
+
+def _run_training_script(dataset: str, model: Optional[str] = None) -> Dict[str, Any]:
+    script_path = ROOT / "train_and_evaluate.py"
+    if not script_path.exists():
+        raise FileNotFoundError(f"Training script not found: {script_path}")
+
+    python_executable = sys.executable or "python"
+    args = [python_executable, str(script_path), "--dataset", dataset]
+    if model:
+        args.extend(["--model", model])
+
+    process = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
+
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"Training process failed with exit code {process.returncode}. stderr: {process.stderr.strip()}"
+        )
+
+    try:
+        return json.loads(process.stdout)
+    except json.JSONDecodeError as ex:
+        raise RuntimeError(
+            f"Training process did not return valid JSON. stdout: {process.stdout.strip()}"
+        ) from ex
+
+
+def _parse_model_metrics_csv() -> List[Dict[str, Any]]:
+    csv_path = ROOT / "models" / "propertytax_model_selection_results.csv"
+    if not csv_path.exists():
+        return []
+
+    with csv_path.open("r", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        rows = []
+        for row in reader:
+            name = row.get("model") or row.get("model_name") or row.get("name")
+            if not name:
+                continue
+
+            def decimal_value(key: str) -> float:
+                value = row.get(key, "")
+                try:
+                    return float(value)
+                except Exception:
+                    return 0.0
+
+            rows.append({
+                "name": name.strip(),
+                "accuracy": decimal_value("test_accuracy"),
+                "precision": decimal_value("test_precision"),
+                "recall": decimal_value("test_recall"),
+                "f1Score": decimal_value("test_f1"),
+                "rocAuc": decimal_value("test_roc_auc"),
+            })
+
+    return rows
+
+
+@app.post("/train")
+async def train(req: TrainRequest):
+    try:
+        result = _run_training_script(req.dataset, req.model)
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+    if not isinstance(result, dict) or not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Training failed without a detailed error."))
+
+    # Immediately reload models so the newly trained artifacts are available in-memory
+    try:
+        CONTAINER.feature_info = loader.load_feature_info()
+        CONTAINER.load_models()
+        global CHART_SAMPLE
+        CHART_SAMPLE = _ensure_required_features(_build_chart_sample())
+        print(f"[ml_service] Automatically reloaded models after training. Loaded models: {list(CONTAINER.models.keys())}")
+    except Exception as ex:
+        print(f"[ml_service] Warning: Failed to automatically reload models after training: {ex}")
+
+    model_metrics = _parse_model_metrics_csv()
+    best_model_name = result.get("best_model_name") or result.get("bestModelName") or req.model or ""
+    return {
+        "success": True,
+        "modelName": req.model,
+        "bestModelName": best_model_name,
+        "best_model_name": best_model_name,
+        "metrics": result.get("metrics", {}),
+        "artifactPath": result.get("artifactPath", ""),
+        "modelMetrics": model_metrics,
     }
 
 
