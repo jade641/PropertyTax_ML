@@ -437,9 +437,18 @@ def _parse_model_metrics_csv() -> List[Dict[str, Any]]:
                 continue
 
             def decimal_value(key: str) -> float:
-                value = row.get(key, "")
+                value = (row.get(key, "") or "").strip()
+                # Accept values like "96.20%", "96.20", "0.9620" and with thousands separators
+                if value.endswith("%"):
+                    value = value[:-1].strip()
+                # Remove common thousands separators
+                value = value.replace(",", "")
                 try:
-                    return float(value)
+                    v = float(value)
+                    # Normalize whole-number percentages to fractional (e.g. 96.2 -> 0.962)
+                    if v > 1.0:
+                        v = v / 100.0
+                    return v
                 except Exception:
                     return 0.0
 
