@@ -13,7 +13,7 @@ import os
 
 BASE_URL = os.environ.get(
     "ML_BASE_URL",
-    "https://property-taxation-ml.onrender.com"
+    "https://propertytax-ml.onrender.com"
 )
 
 

@@ -190,6 +190,45 @@ def main() -> None:
 
         artifact_path = str(pkl_path.resolve())
 
+        # Read and parse selection results CSV if it exists
+        model_metrics = []
+        csv_path = MODELS_DIR / "propertytax_model_selection_results.csv"
+        if csv_path.exists():
+            try:
+                import csv
+                with csv_path.open("r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        # CSV headers: model, test_accuracy, test_precision, test_recall, test_f1, test_roc_auc
+                        name = row.get("model", "").strip()
+                        if not name:
+                            continue
+                        
+                        def clean_pct(val):
+                            if not val:
+                                return 0.0
+                            val_str = str(val).strip()
+                            if val_str.endswith("%"):
+                                val_str = val_str[:-1].strip()
+                            try:
+                                parsed = float(val_str)
+                                if parsed > 1.0:
+                                    parsed /= 100.0
+                                return parsed
+                            except Exception:
+                                return 0.0
+
+                        model_metrics.append({
+                            "name": name,
+                            "accuracy": clean_pct(row.get("test_accuracy")),
+                            "precision": clean_pct(row.get("test_precision")),
+                            "recall": clean_pct(row.get("test_recall")),
+                            "f1Score": clean_pct(row.get("test_f1")),
+                            "rocAuc": clean_pct(row.get("test_roc_auc")),
+                        })
+            except Exception as e:
+                logging.warning("Failed to parse selection CSV in Python: %s", e)
+
         # Trigger hot-reload in running FastAPI (best-effort)
         try:
             req = urllib.request.Request("http://127.0.0.1:8000/reload", method="POST")
@@ -203,6 +242,7 @@ def main() -> None:
             "best_model_name": best_model_name,
             "metrics": metrics,
             "artifactPath": artifact_path,
+            "modelMetrics": model_metrics,
         })
         sys.exit(0)
 

@@ -71,8 +71,8 @@
         "rocAuc": 0.9926
     },
     "best_model_artifacts": {
-        "roc": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260522082737632_PropertyTax_logistic_regression_roc.png",
-        "pr": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260522082737632_PropertyTax_logistic_regression_pr.png",
-        "stat": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260522082737632_PropertyTax_logistic_regression_metrics.png"
+        "roc": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260525025716087_PropertyTax_logistic_regression_roc.png",
+        "pr": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260525025716087_PropertyTax_logistic_regression_pr.png",
+        "stat": "C:\\Users\\jcanl\\Documents\\PropertyTax\\PropertyTax\\PropertyTax_ML\\models\\20260525025716087_PropertyTax_logistic_regression_metrics.png"
     }
 }
