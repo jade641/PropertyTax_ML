@@ -318,7 +318,7 @@ def _find_uploaded_dataset(filename: str) -> Optional[Path]:
     return None
 
 
-def _validate_and_log_features(feature_info: Dict[str, Any], features: Dict[str, Any]) -> None:
+def _validate_and_log_features(feature_info: Dict[str, Any], features: Dict[str, Any], emit_logs: bool = True) -> None:
     all_features = feature_info.get("all_features", [])
     categorical = set(feature_info.get("categorical_features", []))
     numeric = set(feature_info.get("numeric_features", []))
@@ -362,10 +362,55 @@ def _validate_and_log_features(feature_info: Dict[str, Any], features: Dict[str,
         elif name in categorical and not isinstance(value, str):
             features[name] = str(value)
 
-    if missing:
+    if emit_logs and missing:
         print(f"[ml_service] Missing features auto-populated: {missing}")
-    if type_mismatches:
+    if emit_logs and type_mismatches:
         print(f"[ml_service] Type mismatches encountered and coerced: {type_mismatches}")
+
+
+def _resolve_model_key(model_name: Optional[str]) -> str:
+    if model_name:
+        for key in CONTAINER.models.keys():
+            if _normalize_model_name(key) == _normalize_model_name(model_name):
+                return key
+
+    keys = list(CONTAINER.models.keys())
+    if not keys:
+        raise HTTPException(status_code=503, detail="No ML models available")
+
+    return keys[0]
+
+
+def _predict_probabilities(pipeline, X: pd.DataFrame) -> np.ndarray:
+    if hasattr(pipeline, "predict_proba"):
+        probability_values = np.asarray(pipeline.predict_proba(X), dtype=float)
+        if probability_values.ndim == 2:
+            if probability_values.shape[1] > 1:
+                return probability_values[:, 1]
+            if probability_values.shape[1] == 1:
+                return probability_values[:, 0]
+        return probability_values.reshape(-1)
+
+    if hasattr(pipeline, "decision_function"):
+        decision = np.asarray(pipeline.decision_function(X), dtype=float).reshape(-1)
+        return 1.0 / (1.0 + np.exp(-decision))
+
+    return np.asarray(pipeline.predict(X), dtype=float).reshape(-1)
+
+
+def _build_batch_dataframe(instances: List[Dict[str, Any]], pipeline) -> pd.DataFrame:
+    frames: List[pd.DataFrame] = []
+
+    for raw_instance in instances:
+        instance = dict(raw_instance or {})
+        _validate_and_log_features(CONTAINER.feature_info, instance, emit_logs=False)
+        frames.append(loader.build_dataframe_from_features(CONTAINER.feature_info, instance))
+
+    if not frames:
+        return pd.DataFrame()
+
+    combined = pd.concat(frames, ignore_index=True)
+    return _ensure_required_features(combined, pipeline=pipeline)
 
 
 @app.get("/")
@@ -529,19 +574,7 @@ async def predict(req: PredictRequest):
     if features is None:
         raise HTTPException(status_code=400, detail="features or data object must be provided")
 
-    model_key = None
-    if req.model:
-        for k in CONTAINER.models.keys():
-            if _normalize_model_name(k) == _normalize_model_name(req.model):
-                model_key = k
-                break
-
-    if model_key is None:
-        ks = list(CONTAINER.models.keys())
-        if not ks:
-            raise HTTPException(status_code=503, detail="No ML models available")
-        model_key = ks[0]
-
+    model_key = _resolve_model_key(req.model)
     pipeline = CONTAINER.pipelines.get(model_key)
     model = CONTAINER.models[model_key]
 
@@ -557,17 +590,8 @@ async def predict(req: PredictRequest):
         print("Prediction dataframe columns:")
         print(X.columns.tolist())
 
-        if hasattr(pipeline, "predict_proba"):
-            proba_values = pipeline.predict_proba(X)[0]
-            prob_pos = float(proba_values[1]) if len(proba_values) > 1 else float(proba_values[0])
-        elif hasattr(pipeline, "decision_function"):
-            decision = pipeline.decision_function(X)[0]
-            prob_pos = float(1.0 / (1.0 + np.exp(-float(decision))))
-        else:
-            predicted_value = int(pipeline.predict(X)[0])
-            prob_pos = float(predicted_value)
-
-        yhat = int(pipeline.predict(X)[0])
+        prob_pos = float(_predict_probabilities(pipeline, X)[0])
+        yhat = int(np.asarray(pipeline.predict(X)).reshape(-1)[0])
 
         print(f"[ml_service] Prediction completed for {model_key}: prediction={yhat}, probability={prob_pos:.4f}")
 
@@ -586,12 +610,41 @@ async def predict(req: PredictRequest):
 
 @app.post("/predict/batch")
 async def predict_batch(req: BatchPredictRequest):
-    results = []
-    for inst in req.instances:
-        sub = PredictRequest(model=req.model, features=inst)
-        res = await predict(sub)
-        results.append(res)
-    return {"predictions": results}
+    if not req.instances:
+        raise HTTPException(status_code=400, detail="instances must contain at least one row")
+
+    model_key = _resolve_model_key(req.model)
+    pipeline = CONTAINER.pipelines.get(model_key)
+
+    if pipeline is None:
+        raise HTTPException(status_code=422, detail="Feature mismatch between training and inference")
+
+    try:
+        X = _build_batch_dataframe(req.instances, pipeline)
+        if X.empty:
+            raise HTTPException(status_code=422, detail="No valid instances supplied")
+
+        probabilities = _predict_probabilities(pipeline, X)
+        predictions = np.asarray(pipeline.predict(X)).reshape(-1)
+
+        results = [
+            {
+                "prediction": int(prediction),
+                "probability": round(float(probability), 4),
+            }
+            for prediction, probability in zip(predictions, probabilities)
+        ]
+
+        return {"predictions": results}
+    except HTTPException as ex:
+        raise ex
+    except ValidationError as ex:
+        raise HTTPException(status_code=422, detail=ex.errors())
+    except Exception as ex:
+        msg = str(ex)
+        if "mismatch" in msg.lower():
+            raise HTTPException(status_code=422, detail="Feature mismatch between training and inference")
+        raise HTTPException(status_code=500, detail=msg)
 
 
 @app.get("/chart/feature-importance")
