@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import base64
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
@@ -464,10 +466,34 @@ def _parse_model_metrics_csv() -> List[Dict[str, Any]]:
     return rows
 
 
+def _prepare_training_dataset(req: TrainRequest) -> str:
+    dataset = (req.dataset or "").strip()
+    if not dataset:
+        raise ValueError("dataset is required")
+
+    dataset_payload = (req.datasetContentBase64 or "").strip()
+    if not dataset_payload:
+        return dataset
+
+    try:
+        dataset_bytes = base64.b64decode(dataset_payload, validate=True)
+    except Exception as ex:
+        raise ValueError("datasetContentBase64 is not valid base64") from ex
+
+    requested_name = (req.datasetFileName or dataset).strip()
+    safe_name = Path(requested_name).name.strip() or "uploaded_training_dataset.csv"
+
+    SHARED_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    target_path = SHARED_UPLOADS_DIR / safe_name
+    target_path.write_bytes(dataset_bytes)
+    return str(target_path)
+
+
 @app.post("/train")
 async def train(req: TrainRequest):
     try:
-        result = _run_training_script(req.dataset, req.model)
+        dataset = _prepare_training_dataset(req)
+        result = _run_training_script(dataset, req.model)
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 

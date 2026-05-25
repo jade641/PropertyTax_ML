@@ -28,6 +28,8 @@ class BatchPredictRequest(BaseModel):
 class TrainRequest(BaseModel):
     model: Optional[str] = None
     dataset: str
+    datasetFileName: Optional[str] = None
+    datasetContentBase64: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
 
 
