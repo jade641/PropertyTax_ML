@@ -1,9 +1,11 @@
 import csv
+import hashlib
 import json
 import os
 import subprocess
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -421,7 +423,7 @@ def root():
         "status": "ok",
         "service": "PropertyTax ML Service",
         "model": model_name,
-        "endpoints": ["/health", "/models", "/train", "/predict", "/docs", "/chart/feature-importance", "/chart/risk-distribution", "/chart/probability-histogram"],
+        "endpoints": ["/health", "/models", "/artifacts/manifest", "/train", "/predict", "/docs", "/chart/feature-importance", "/chart/risk-distribution", "/chart/probability-histogram"],
     }
 
 
@@ -437,6 +439,60 @@ async def list_models():
             {"name": name, "artifactPath": CONTAINER.artifacts.get(name)}
             for name in CONTAINER.models.keys()
         ]
+    }
+
+
+def _compute_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file_stream:
+        for chunk in iter(lambda: file_stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _collect_artifact_manifest_entries() -> List[Dict[str, Any]]:
+    models_dir = ROOT / "models"
+    candidates: List[Path] = []
+    seen_paths = set()
+
+    def add_candidate(path: Path):
+        resolved = path.resolve()
+        if not path.exists() or resolved in seen_paths:
+            return
+        seen_paths.add(resolved)
+        candidates.append(path)
+
+    if models_dir.exists():
+        for model_path in sorted(models_dir.glob("*.pkl")):
+            add_candidate(model_path)
+
+        add_candidate(models_dir / "propertytax_feature_info.json")
+        add_candidate(models_dir / "propertytax_model_selection_results.csv")
+
+    entries: List[Dict[str, Any]] = []
+    for path in candidates:
+        stat = path.stat()
+        entries.append(
+            {
+                "name": path.name,
+                "relativePath": path.relative_to(ROOT).as_posix(),
+                "sizeBytes": stat.st_size,
+                "lastModifiedUtc": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                "sha256": _compute_sha256(path),
+            }
+        )
+
+    return entries
+
+
+@app.get("/artifacts/manifest")
+async def artifacts_manifest():
+    models_dir = ROOT / "models"
+    return {
+        "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "modelsDirectory": str(models_dir),
+        "loadedModels": list(CONTAINER.models.keys()),
+        "artifacts": _collect_artifact_manifest_entries(),
     }
 
 

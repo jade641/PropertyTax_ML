@@ -31,10 +31,12 @@ Endpoints:
 
 - GET /health
 - GET /models
+- GET /artifacts/manifest
 - POST /predict  (body: {"model": "OptionalModelName", "features": { ... }})
 - POST /predict/batch
 
 Notes:
 - The service loads any .pkl files found in ../models
+- Use `/artifacts/manifest` to compare local and deployed model files, metadata, hashes, and loaded model names before promoting a release.
 - Ensure the training pipeline saved the preprocessing pipeline together with the estimator so that inference will use the same preprocessing and feature ordering.
 - Set `FRONTEND_BASE_URL` or `CORS_ALLOWED_ORIGINS` in production if the frontend URL changes.

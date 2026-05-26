@@ -36,6 +36,8 @@ def post_json(path: str, payload: dict):
 def main():
     root = get_json("/")
     health = get_json("/health")
+    models = get_json("/models")
+    manifest = get_json("/artifacts/manifest")
     prediction = post_json(
         "/predict?threshold=0.5",
         {"data": {"payment_compliance_score": 0.8, "assessed_value": 100000}},
@@ -43,12 +45,16 @@ def main():
 
     assert root.get("status") == "ok", root
     assert health.get("status") == "ok", health
+    assert isinstance(models.get("models"), list), models
+    assert isinstance(manifest.get("artifacts"), list), manifest
     assert "prediction" in prediction, prediction
     assert isinstance(prediction.get("prediction"), int), prediction
 
     print("Smoke test passed")
     print("root:", root)
     print("health:", health)
+    print("models:", models)
+    print("manifest:", manifest)
     print("prediction:", prediction)
 
 
