@@ -88,6 +88,14 @@ def discover_models() -> Dict[str, Dict[str, Any]]:
     return mapping
 
 
+def _apply_estimator_compatibility_fixes(estimator: Any) -> Any:
+    # Older serialized LogisticRegression artifacts can miss multi_class after sklearn upgrades.
+    if estimator is not None and estimator.__class__.__name__ == "LogisticRegression" and not hasattr(estimator, "multi_class"):
+        setattr(estimator, "multi_class", "auto")
+
+    return estimator
+
+
 def load_model(path: str) -> Tuple[Any, Optional[Any]]:
     """Load a saved artifact. Return (estimator, pipeline).
 
@@ -107,6 +115,8 @@ def load_model(path: str) -> Tuple[Any, Optional[Any]]:
         estimator = pipeline.steps[-1][1]
     except Exception as exc:
         raise ValueError(f"Unable to resolve final estimator from pipeline: {path}") from exc
+
+    estimator = _apply_estimator_compatibility_fixes(estimator)
 
     return estimator, pipeline
 
